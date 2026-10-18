@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Punto 4 - Estabilidad del sistema</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial,sans-serif;background:#f2f5f9;color:#243247;margin:0;padding:25px}
+.contenedor{max-width:1000px;margin:auto}
+h1,h2{color:#174a7e}
+.panel{background:white;padding:22px;margin:20px 0;border-radius:12px;box-shadow:0 3px 12px #00000012}
+.campos{display:flex;gap:20px;flex-wrap:wrap}
+label{display:block;margin-bottom:8px;font-weight:bold}
+input{padding:10px;width:130px;border:1px solid #bbb;border-radius:6px;font-size:16px}
+button{background:#1769aa;color:white;border:none;padding:12px 20px;margin-top:20px;border-radius:6px;cursor:pointer;font-size:16px}
+button:hover{background:#104c7d}
+.resultado{padding:15px;border-radius:8px;margin-top:12px;background:#eef4fb;line-height:1.7}
+.grafica{position:relative;height:380px}
+.nota{color:#555;font-size:14px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="contenedor">
+<h1>Actividad: Identificación de sistemas discretos</h1>
+<p><strong>Punto 4.</strong> Análisis de estabilidad con controlador proporcional.</p>
+<div class="panel">
+<h2>1. Parámetros del sistema</h2>
+<p>Se utiliza el modelo discreto de segundo orden:</p>
+<p><strong>y[n] = a·y[n−1] + b·y[n−2] + K·x[n]</strong></p>
+<p class="nota">Los coeficientes a y b deben corresponder a la ecuación de diferencias obtenida en el punto 2. Para esta simulación puedes modificarlos y comprobar el efecto de K.</p>
+<div class="campos">
+<div><label for="a">Coeficiente a</label><input id="a" type="number" value="0.5" step="0.1"></div>
+<div><label for="b">Coeficiente b</label><input id="b" type="number" value="-0.2" step="0.1"></div>
+<div><label for="k1">K del caso 1</label><input id="k1" type="number" value="0.5" step="0.1"></div>
+<div><label for="k2">K del caso 2</label><input id="k2" type="number" value="2" step="0.1"></div>
+</div>
+<button onclick="simular()">Calcular y graficar</button>
+</div>
+<div class="panel">
+<h2>2. Respuesta al escalón unitario</h2>
+<p>La entrada es x[n] = 1 para todos los índices n ≥ 0. Se comparan las respuestas de los dos valores de K.</p>
+<div class="grafica"><canvas id="grafica"></canvas></div>
+</div>
+<div class="panel">
+<h2>3. Análisis de estabilidad</h2>
+<div id="resultados" class="resultado">Presiona «Calcular y graficar» para obtener los resultados.</div>
+</div>
+<div class="panel">
+<h2>4. Procedimiento</h2>
+<ol>
+<li>Se define la ecuación de diferencias del sistema.</li>
+<li>Se aplica una entrada de escalón unitario.</li>
+<li>Se calculan las salidas sucesivas para cada valor de K.</li>
+<li>Se obtiene la ecuación característica: z² − a·z − b = 0.</li>
+<li>Se calculan sus polos y se verifica si están dentro del círculo unitario.</li>
+<li>Se comparan las gráficas para identificar respuestas estables e inestables.</li>
+</ol>
+<p class="nota">Nota: esta página utiliza una simulación numérica en JavaScript. El resultado depende de los coeficientes elegidos y del modelo. Para representar fielmente el sistema de tu actividad, introduce los coeficientes identificados en el punto 2.</p>
+</div>
+</div>
+<script>
+let graficaActual;
+function polos(a,b){
+ const d=a*a+4*b;
+ if(d>=0)return [(a+Math.sqrt(d))/2,(a-Math.sqrt(d))/2];
+ const r=a/2, im=Math.sqrt(-d)/2;
+ return [{real:r,imag:im},{real:r,imag:-im}];
+}
+function modulo(p){return typeof p==="number"?Math.abs(p):Math.sqrt(p.real*p.real+p.imag*p.imag);}
+function simular(){
+ const a=Number(document.getElementById("a").value), b=Number(document.getElementById("b").value);
+ const k1=Number(document.getElementById("k1").value), k2=Number(document.getElementById("k2").value);
+ if(![a,b,k1,k2].every(Number.isFinite)){alert("Introduce valores numéricos válidos.");return;}
+ const N=40, n=Array.from({length:N},(_,i)=>i);
+ function respuesta(K){const y=Array(N).fill(0);for(let i=0;i<N;i++){const y1=i>=1?y[i-1]:0,y2=i>=2?y[i-2]:0;y[i]=a*y1+b*y2+K;}return y;}
+ const y1=respuesta(k1),y2=respuesta(k2);
+ if(graficaActual)graficaActual.destroy();
+ graficaActual=new Chart(document.getElementById("grafica"),{type:"line",data:{labels:n,datasets:[
+ {label:"Respuesta con K = "+k1,data:y1,borderColor:"#1677c8",backgroundColor:"#1677c8",pointRadius:2,tension:0},
+ {label:"Respuesta con K = "+k2,data:y2,borderColor:"#e58b19",backgroundColor:"#e58b19",pointRadius:2,tension:0},
+ {label:"Referencia unitaria",data:Array(N).fill(1),borderColor:"#24945b",borderDash:[6,5],pointRadius:0}]},
+ options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:"Índice discreto n"}},y:{title:{display:true,text:"Salida y[n]"}}}}});
+ const roots=polos(a,b), mods=roots.map(modulo), estable=mods.every(r=>r<1);
+ const textoPolos=roots.map((p,i)=>typeof p==="number"?"z"+(i+1)+" = "+p.toFixed(4):"z"+(i+1)+" = "+p.real.toFixed(4)+(p.imag>=0?" + ":" - ")+Math.abs(p.imag).toFixed(4)+"i").join("<br>");
+ const textoEstabilidad=estable?"Estable: todos los polos están dentro del círculo unitario.":mods.some(r=>Math.abs(r-1)<1e-9)?"Hay polos sobre el círculo unitario. Se requiere analizar su multiplicidad para determinar la estabilidad.":"Inestable: al menos un polo está fuera del círculo unitario.";
+ document.getElementById("resultados").innerHTML="<strong>Ecuación característica:</strong><br>z² − ("+a+")z − ("+b+") = 0<br><br><strong>Polos:</strong><br>"+textoPolos+"<br><br><strong>Módulos:</strong><br>"+mods.map(v=>v.toFixed(4)).join(", ")+"<br><br><strong>Resultado:</strong> "+textoEstabilidad+"<br><br><strong>Respuesta final con K = "+k1+":</strong> "+y1[N-1].toFixed(4)+"<br><strong>Respuesta final con K = "+k2+":</strong> "+y2[N-1].toFixed(4)+"<br><br><em>Importante:</em> con este modelo, K modifica la entrada pero no los polos. Por eso la estabilidad no cambia al variar K.";
+}
+simular();
+</script>
+</body>
+</html>
