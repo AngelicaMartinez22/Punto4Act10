@@ -1,0 +1,136 @@
+
+import numpy as np
+import matplotlib.pyplot as plt
+
+# ==========================================
+# 1. MODELO DEL SISTEMA IDENTIFICADO
+# ==========================================
+
+i = -0.00391331
+j = 0.13455750
+
+# Valores de la ganancia proporcional
+K_estable = 1.0
+K_inestable = -7.45
+
+# Entrada de escalón unitario
+N = 30
+n = np.arange(N)
+referencia = np.ones(N)
+
+# ==========================================
+# 2. FUNCIÓN PARA SIMULAR EL SISTEMA
+#    CON CONTROLADOR PROPORCIONAL
+# ==========================================
+
+def simular_sistema(K, referencia):
+    y = np.zeros(len(referencia))
+    denominador = 1 + K * j
+
+    if abs(denominador) < 1e-10:
+        raise ValueError("La ganancia produce una singularidad.")
+
+    for k in range(len(referencia)):
+        y_anterior = y[k - 1] if k > 0 else 0.0
+
+        y[k] = (
+            i * y_anterior
+            + K * j * referencia[k]
+        ) / denominador
+
+    polo = i / denominador
+    estable = abs(polo) < 1
+
+    return y, polo, estable
+
+
+# ==========================================
+# 3. SIMULACIÓN CON DOS VALORES DE K
+# ==========================================
+
+y_estable, polo_estable, estable_1 = simular_sistema(
+    K_estable, referencia
+)
+
+y_inestable, polo_inestable, estable_2 = simular_sistema(
+    K_inestable, referencia
+)
+
+# ==========================================
+# 4. MOSTRAR RESULTADOS
+# ==========================================
+
+print("=" * 55)
+print("ANÁLISIS DE ESTABILIDAD CON CONTROLADOR PROPORCIONAL")
+print("=" * 55)
+
+print(f"\nCoeficiente i = {i:.8f}")
+print(f"Coeficiente j = {j:.8f}")
+
+print("\nCASO 1: GANANCIA ESTABLE")
+print(f"K = {K_estable}")
+print(f"Polo de lazo cerrado = {polo_estable:.6f}")
+print("Estabilidad:", "ESTABLE" if estable_1 else "INESTABLE")
+
+print("\nCASO 2: GANANCIA INESTABLE")
+print(f"K = {K_inestable}")
+print(f"Polo de lazo cerrado = {polo_inestable:.6f}")
+print("Estabilidad:", "ESTABLE" if estable_2 else "INESTABLE")
+
+print("\nRespuesta de las primeras 10 muestras:")
+print(" n    K estable       K inestable")
+
+for k in range(10):
+    print(f"{k:2d}    {y_estable[k]:12.6f}    "
+          f"{y_inestable[k]:12.6f}")
+
+# ==========================================
+# 5. GRAFICAR LAS RESPUESTAS
+# ==========================================
+
+plt.figure(figsize=(10, 6))
+
+plt.stem(
+    n, y_estable,
+    linefmt="b-",
+    markerfmt="bo",
+    basefmt="k-",
+    label=f"K = {K_estable} (estable)"
+)
+
+plt.plot(
+    n, y_inestable,
+    "r-o",
+    markersize=4,
+    label=f"K = {K_inestable} (inestable)"
+)
+
+plt.axhline(
+    1,
+    color="green",
+    linestyle="--",
+    label="Referencia unitaria"
+)
+
+plt.title("Estabilidad del sistema con controlador proporcional")
+plt.xlabel("Índice discreto n")
+plt.ylabel("Salida y[n]")
+plt.grid(True, alpha=0.3)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# ==========================================
+# 6. CONCLUSIÓN AUTOMÁTICA
+# ==========================================
+
+print("\nCONCLUSION:")
+
+if estable_1:
+    print(f"Con K = {K_estable}, la respuesta es estable.")
+
+if not estable_2:
+    print(
+        f"Con K = {K_inestable}, la respuesta es inestable "
+        "porque el polo queda fuera del círculo unitario."
+    )
